@@ -1,11 +1,11 @@
-# Back up old version first
-cp -a ~/dotfiles/bin/tmux-prj02 ~/dotfiles/bin/tmux-prj02.bak
+# Backup old version
+cp -a ~/dotfiles/bin/tmux-prj02 ~/dotfiles/bin/tmux-prj02.bak 2>/dev/null || true
 
-# Now write the new version
+# Write robust, index-agnostic version
 cat > ~/dotfiles/bin/tmux-prj02 <<'EOF'
 #!/usr/bin/env bash
 # Open or create tmux session "prj02" with 4 panes:
-# - split vertically, then horizontally on each side
+# - vertical split, then horizontal split on each side
 # - TL: nvim lib/matrix.h
 # - TR: nvim src/main.cpp
 # - BL: nvim README-milestone1.md
@@ -14,6 +14,11 @@ set -euo pipefail
 
 SESSION="prj02"
 
+# Optional: always start from project root so relative paths resolve
+if [ -d "/workspaces/cs2c-prj02-mjm41" ]; then
+  cd /workspaces/cs2c-prj02-mjm41
+fi
+
 in_tmux() { [ -n "${TMUX-}" ]; }
 
 if tmux has-session -t "$SESSION" 2>/dev/null; then
@@ -21,32 +26,36 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   exit 0
 fi
 
-# Create new session detached
+# Create session detached with one window in current dir
 tmux new-session -d -s "$SESSION" -n editor
 
-# Get the actual first window index (#I) so we don't assume base-index
+# Get the first window index (don't assume base-index)
 WIN="$(tmux list-windows -t "$SESSION" -F '#I' | head -n1)"
 
-# Start with one pane; make right split first on that window
+# Capture the original (left) pane's ID
+LEFT="$(tmux display -p -t "${SESSION}:${WIN}" '#{pane_id}')"
+
+# Split vertically to create RIGHT; active pane becomes RIGHT
 tmux split-window -h -t "${SESSION}:${WIN}"
+RIGHT="$(tmux display -p -t "${SESSION}:${WIN}" '#{pane_id}')"
 
-# Split the LEFT side horizontally (creates TL + BL)
-tmux select-pane -t "${SESSION}:${WIN}.0"
-tmux split-window -v -t "${SESSION}:${WIN}.0"
+# Split LEFT horizontally (top-left = LEFT, new bottom-left active)
+tmux split-window -v -t "${LEFT}"
+# Split RIGHT horizontally (top-right = RIGHT, new bottom-right active)
+tmux split-window -v -t "${RIGHT}"
 
-# Split the RIGHT side horizontally (creates TR + BR)
-tmux select-pane -t "${SESSION}:${WIN}.1"
-tmux split-window -v -t "${SESSION}:${WIN}.1"
+# Send commands by pane ID (robust across pane-base-index settings)
+tmux send-keys -t "${LEFT}"  'nvim lib/matrix.h' C-m
+tmux send-keys -t "${RIGHT}" 'nvim src/main.cpp' C-m
 
-# Now panes: 0 TL, 1 TR, 2 BL, 3 BR
-tmux send-keys -t "${SESSION}:${WIN}.0" 'nvim lib/matrix.h' C-m
-tmux send-keys -t "${SESSION}:${WIN}.1" 'nvim src/main.cpp' C-m
-tmux send-keys -t "${SESSION}:${WIN}.2" 'nvim README-milestone1.md' C-m
+# Find the BL pane: it's the newest pane in the window that is not LEFT/RIGHT
+BL="$(tmux list-panes -t "${SESSION}:${WIN}" -F '#{pane_id} #{pane_active} #{pane_left} #{pane_right} #{pane_top}' \
+  | awk '{print $1}' | grep -v -E "^(${LEFT}|${RIGHT})$" | head -n1)"
+tmux send-keys -t "${BL}" 'nvim README-milestone1.md' C-m
 
-# Focus TL and attach/switch
-tmux select-pane -t "${SESSION}:${WIN}.0"
+# Focus TL (LEFT) and attach/switch
+tmux select-pane -t "${LEFT}"
 if in_tmux; then tmux switch-client -t "$SESSION"; else tmux attach -t "$SESSION"; fi
 EOF
 
-# Make it executable
 chmod +x ~/dotfiles/bin/tmux-prj02
