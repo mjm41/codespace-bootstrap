@@ -1,34 +1,33 @@
-mkdir -p dotfiles/bin
+# Back up old version first
+cp -a ~/dotfiles/bin/tmux-prj02 ~/dotfiles/bin/tmux-prj02.bak
 
-cat > dotfiles/bin/tmux-prj02 <<'EOF'
+# Now write the new version
+cat > ~/dotfiles/bin/tmux-prj02 <<'EOF'
 #!/usr/bin/env bash
 # Open or create tmux session "prj02" with 4 panes:
-#   - split vertically, then horizontally on each side
-#   - TL: nvim lib/matrix.h
-#   - TR: nvim src/main.cpp
-#   - BL: nvim README-milestone1.md
-#   - BR: shell
+# - split vertically, then horizontally on each side
+# - TL: nvim lib/matrix.h
+# - TR: nvim src/main.cpp
+# - BL: nvim README-milestone1.md
+# - BR: shell
 set -euo pipefail
 
 SESSION="prj02"
-WIN="1"
 
 in_tmux() { [ -n "${TMUX-}" ]; }
 
 if tmux has-session -t "$SESSION" 2>/dev/null; then
-  # Session exists: jump to it
-  if in_tmux; then
-    tmux switch-client -t "$SESSION"
-  else
-    tmux attach -t "$SESSION"
-  fi
+  if in_tmux; then tmux switch-client -t "$SESSION"; else tmux attach -t "$SESSION"; fi
   exit 0
 fi
 
-# Create new session, window starts in current working directory
+# Create new session detached
 tmux new-session -d -s "$SESSION" -n editor
 
-# Start with one pane (left). Make right split first…
+# Get the actual first window index (#I) so we don't assume base-index
+WIN="$(tmux list-windows -t "$SESSION" -F '#I' | head -n1)"
+
+# Start with one pane; make right split first on that window
 tmux split-window -h -t "${SESSION}:${WIN}"
 
 # Split the LEFT side horizontally (creates TL + BL)
@@ -39,21 +38,15 @@ tmux split-window -v -t "${SESSION}:${WIN}.0"
 tmux select-pane -t "${SESSION}:${WIN}.1"
 tmux split-window -v -t "${SESSION}:${WIN}.1"
 
-# Now panes should be:
-#  0 TL, 1 TR, 2 BL, 3 BR
+# Now panes: 0 TL, 1 TR, 2 BL, 3 BR
 tmux send-keys -t "${SESSION}:${WIN}.0" 'nvim lib/matrix.h' C-m
 tmux send-keys -t "${SESSION}:${WIN}.1" 'nvim src/main.cpp' C-m
 tmux send-keys -t "${SESSION}:${WIN}.2" 'nvim README-milestone1.md' C-m
 
-# Focus top-left by default
+# Focus TL and attach/switch
 tmux select-pane -t "${SESSION}:${WIN}.0"
-
-# Attach or switch
-if in_tmux; then
-  tmux switch-client -t "$SESSION"
-else
-  tmux attach -t "$SESSION"
-fi
+if in_tmux; then tmux switch-client -t "$SESSION"; else tmux attach -t "$SESSION"; fi
 EOF
 
-chmod +x dotfiles/bin/tmux-prj02
+# Make it executable
+chmod +x ~/dotfiles/bin/tmux-prj02
