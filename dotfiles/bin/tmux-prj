@@ -1,22 +1,17 @@
 # Backup old version
-cp -a ~/dotfiles/bin/tmux-prj02 ~/dotfiles/bin/tmux-prj02.bak 2>/dev/null || true
+cp -a ~/dotfiles/bin/tmux-prj ~/dotfiles/bin/tmux-prj.bak 2>/dev/null || true
 
 # Write robust, index-agnostic version
-cat > ~/dotfiles/bin/tmux-prj02 <<'EOF'
+cat > ~/dotfiles/bin/tmux-prj <<'EOF'
 #!/usr/bin/env bash
-# Open or create tmux session "prj02" with 4 panes:
-# - vertical split, then horizontal split on each side
-# - TL: nvim lib/matrix.h
-# - TR: nvim src/main.cpp
-# - BL: nvim README-milestone1.md
-# - BR: shell
+
 set -euo pipefail
 
-SESSION="prj02"
+SESSION="prj"
 
 # Optional: always start from project root so relative paths resolve
-if [ -d "/workspaces/cs2c-prj02-mjm41" ]; then
-  cd /workspaces/cs2c-prj02-mjm41
+if [ -d "/workspaces/cs2c-prj-mjm41" ]; then
+  cd /workspaces/cs2c-prj-mjm41
 fi
 
 in_tmux() { [ -n "${TMUX-}" ]; }
@@ -45,7 +40,7 @@ tmux split-window -v -t "${LEFT}"
 tmux split-window -v -t "${RIGHT}"
 
 # Send commands by pane ID (robust across pane-base-index settings)
-tmux send-keys -t "${LEFT}"  'nvim lib/matrix.h' C-m
+tmux send-keys -t "${LEFT}"  'nvim lib/matrix_algorithms.h' C-m
 tmux send-keys -t "${RIGHT}" 'nvim src/main.cpp' C-m
 
 # Find the BL pane: it's the newest pane in the window that is not LEFT/RIGHT
@@ -58,4 +53,4 @@ tmux select-pane -t "${LEFT}"
 if in_tmux; then tmux switch-client -t "$SESSION"; else tmux attach -t "$SESSION"; fi
 EOF
 
-chmod +x ~/dotfiles/bin/tmux-prj02
+chmod +x ~/dotfiles/bin/tmux-prj
