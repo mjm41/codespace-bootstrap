@@ -141,6 +141,34 @@ fi
 
 git clone "${NVIM_CONFIG_URL}" "${HOME}/.config/nvim"
 
+# --- install tmux-prj and ensure PATH ---------------------------------------
+
+# Repo root (directory of this script)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+REPO_ROOT="$SCRIPT_DIR"
+
+# 1) Ensure ~/dotfiles/bin exists
+mkdir -p "$HOME/dotfiles/bin"
+
+# 2) Install/refresh scripts from repo (copy everything in dotfiles/bin/)
+if [ -d "$REPO_ROOT/dotfiles/bin" ]; then
+  cp -a "$REPO_ROOT/dotfiles/bin/." "$HOME/dotfiles/bin/"
+fi
+
+# 3) Make sure they’re executable
+chmod -R u+x "$HOME/dotfiles/bin" || true
+
+# 4) Add ~/dotfiles/bin to PATH (bash + zsh), only once
+ADD_LINE='export PATH="$HOME/dotfiles/bin:$PATH"'
+for RC in "$HOME/.bashrc" "$HOME/.zshrc"; do
+  [ -f "$RC" ] || touch "$RC"
+  grep -qxF "$ADD_LINE" "$RC" || printf '\n%s\n' "$ADD_LINE" >> "$RC"
+done
+
+# 5) Update PATH for this run and refresh the command hash
+export PATH="$HOME/dotfiles/bin:$PATH"
+hash -r
+
 log "Bootstrap complete."
 echo
 echo "Next steps:"
