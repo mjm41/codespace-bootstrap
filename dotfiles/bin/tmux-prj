@@ -40,13 +40,13 @@ tmux split-window -v -t "${LEFT}"
 tmux split-window -v -t "${RIGHT}"
 
 # Send commands by pane ID (robust across pane-base-index settings)
-tmux send-keys -t "${LEFT}"  'nvim lib/matrix_algorithms.h' C-m
+# tmux send-keys -t "${LEFT}"  'nvim lib/matrix_algorithms.h' C-m
 tmux send-keys -t "${RIGHT}" 'nvim src/main.cpp' C-m
 
 # Find the BL pane: it's the newest pane in the window that is not LEFT/RIGHT
 BL="$(tmux list-panes -t "${SESSION}:${WIN}" -F '#{pane_id} #{pane_active} #{pane_left} #{pane_right} #{pane_top}' \
   | awk '{print $1}' | grep -v -E "^(${LEFT}|${RIGHT})$" | head -n1)"
-tmux send-keys -t "${BL}" 'nvim README-milestone1.md' C-m
+tmux send-keys -t "${BL}" 'nvim README.md' C-m
 
 # Focus TL (LEFT) and attach/switch
 tmux select-pane -t "${LEFT}"
