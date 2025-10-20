@@ -109,9 +109,32 @@ log "Neovim installed: $(nvim --version | head -n 1)"
 
 # tmux config
 if [ "${INSTALL_TMUX}" = "1" ]; then
-  log "Installing tmux config (gpakosz/.tmux)"
-  # avoid caching with a timestamp anchor
-  curl -fsSL "${TMUX_CFG_INSTALL}#$(date +%s)" | bash || warn "tmux config install script returned non-zero"
+  log "Installing tmux config (gpakosz/.tmux) — manual, idempotent"
+
+  # Ensure git is present (some images omit it)
+  sudo ${PKG_MGR} install -y git >/dev/null 2>&1 || true
+
+  # Clone or update ~/.tmux
+  if [ -d "$HOME/.tmux/.git" ]; then
+    git -C "$HOME/.tmux" fetch --depth=1 origin master || true
+    git -C "$HOME/.tmux" reset --hard origin/master || true
+  else
+    rm -rf "$HOME/.tmux"
+    git clone --depth=1 https://github.com/gpakosz/.tmux.git "$HOME/.tmux"
+  fi
+
+  # Symlink main config (no prompt)
+  ln -sf "$HOME/.tmux/.tmux.conf" "$HOME/.tmux.conf"
+
+  # Create local override if missing (don’t overwrite user changes)
+  if [ ! -f "$HOME/.tmux.conf.local" ]; then
+    cp "$HOME/.tmux/.tmux.conf.local" "$HOME/.tmux.conf.local"
+  fi
+
+  # If tmux is already running in this shell, reload; otherwise it’ll pick up next start
+  if tmux info >/dev/null 2>&1; then
+    tmux source-file "$HOME/.tmux.conf" || true
+  fi
 fi
 
 # Nerd Font (JetBrainsMono)
